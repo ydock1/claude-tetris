@@ -67,6 +67,10 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const pauseMenuEl = document.getElementById('pause-menu');
+const resumeBtn = document.getElementById('resume-btn');
+const controlsToggleBtn = document.getElementById('controls-toggle-btn');
+const pauseControlsEl = document.getElementById('pause-controls');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let piecesCreated, powerupPieceNumber, frozenUntil, isSingleRewardPending;
@@ -474,7 +478,14 @@ function showOverlay(title, detail, restartLabel) {
   restartBtn.textContent = restartLabel ?? '';
   restartBtn.classList.toggle('hidden', restartLabel === null);
   levelMenuEl.classList.add('hidden');
+  pauseMenuEl.classList.add('hidden');
   overlay.classList.remove('hidden');
+}
+
+function hideOverlay() {
+  overlay.classList.add('hidden');
+  pauseMenuEl.classList.add('hidden');
+  pauseControlsEl.classList.add('hidden');
 }
 
 function endGame() {
@@ -491,12 +502,18 @@ function togglePause() {
   if (gameOver || isMenuOpen) return;
   paused = !paused;
   if (!paused) {
+    hideOverlay();
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    showOverlay('PAUSA', '', 'Reiniciar');
+    showPauseOverlay();
   }
+}
+
+function showPauseOverlay() {
+  showOverlay('PAUSA', '', 'Reiniciar');
+  pauseMenuEl.classList.remove('hidden');
 }
 
 function loop(ts) {
@@ -545,7 +562,7 @@ function init() {
   spawn();
   drawHold();
   updateHUD();
-  overlay.classList.add('hidden');
+  hideOverlay();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -553,7 +570,10 @@ function init() {
 document.addEventListener('keydown', e => {
   if (e.code.startsWith('Arrow')) e.preventDefault();
   if (isMenuOpen) return;
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (!e.repeat) togglePause();
+    return;
+  }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -590,7 +610,20 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', handleRestartClick);
+restartBtn.addEventListener('click', () => {
+  handleRestartClick();
+  restartBtn.blur(); // no robar el teclado al juego
+});
+
+resumeBtn.addEventListener('click', () => {
+  togglePause();
+  resumeBtn.blur();
+});
+
+controlsToggleBtn.addEventListener('click', () => {
+  pauseControlsEl.classList.toggle('hidden');
+  controlsToggleBtn.blur();
+});
 
 const themeToggle = document.getElementById('theme-toggle');
 const THEME_KEY = 'tetris-theme';
