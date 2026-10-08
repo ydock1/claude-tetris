@@ -81,7 +81,7 @@ function effectiveDropInterval() {
 function saveUndoSnapshot() {
   undoSnapshot = JSON.parse(JSON.stringify({
     board, current, next, pieceQueue, score, lines, level, dropInterval,
-    comboCount, isBackToBackActive, isSingleRewardPending, piecesCreated,
+    comboCount, bestComboCount, isBackToBackActive, isSingleRewardPending, piecesCreated,
     powerupPieceNumber, heldPiece, isHoldUsedThisPiece,
   }));
 }
@@ -90,7 +90,7 @@ function undoLastPlacement() {
   if (!undoSnapshot) return false;
   ({
     board, current, next, pieceQueue, score, lines, level, dropInterval,
-    comboCount, isBackToBackActive, isSingleRewardPending, piecesCreated,
+    comboCount, bestComboCount, isBackToBackActive, isSingleRewardPending, piecesCreated,
     powerupPieceNumber, heldPiece, isHoldUsedThisPiece,
   } = undoSnapshot);
   undoSnapshot = null;

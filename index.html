@@ -70,7 +70,21 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <form id="score-name-form" class="score-name-form hidden">
+          <input id="score-name-input" type="text" maxlength="12" placeholder="Tu nombre" autocomplete="off" />
+          <button type="submit">Guardar nombre</button>
+        </form>
         <div id="level-menu" class="level-menu hidden"></div>
+        <section id="score-board" class="score-board hidden">
+          <span class="label">RÉCORDS</span>
+          <table class="score-table">
+            <thead>
+              <tr><th>#</th><th>NOMBRE</th><th>PUNTOS</th><th>LÍNEAS</th><th>COMBO</th></tr>
+            </thead>
+            <tbody id="score-table-body"></tbody>
+          </table>
+          <button id="score-reset-btn" class="menu-btn" type="button">Borrar récords</button>
+        </section>
         <button id="restart-btn">Reiniciar</button>
         <button id="menu-btn" class="menu-btn" type="button">Menú de niveles</button>
       </div>
@@ -80,6 +94,7 @@
   <script src="hold.js"></script>
   <script src="skills.js"></script>
   <script src="challenge.js"></script>
+  <script src="scores.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

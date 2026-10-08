@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'game.js'];
+const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'scores.js', 'game.js'];
 const BOARD_COLUMN_COUNT = 10;
 
 function createFakeContext() {
@@ -31,6 +31,8 @@ function createFakeElement() {
     setAttribute() {},
     addEventListener() {},
     blur() {},
+    focus() {},
+    value: '',
     getContext: () => createFakeContext(),
   };
 }
@@ -48,8 +50,8 @@ function createFakeDocument() {
     addEventListener(eventType, handler) {
       if (eventType === 'keydown') keyDownHandlers.push(handler);
     },
-    pressKey: code => {
-      for (const handler of keyDownHandlers) handler({ code, preventDefault() {} });
+    pressKey: (code, target) => {
+      for (const handler of keyDownHandlers) handler({ code, target, preventDefault() {} });
     },
   };
 }
@@ -57,10 +59,15 @@ function createFakeDocument() {
 function loadGame() {
   let fakeNowMs = 0;
   const fakeDocument = createFakeDocument();
+  const storedTextByKey = new Map();
   const context = vm.createContext({
     document: fakeDocument,
     getComputedStyle: () => ({ getPropertyValue: () => '' }),
-    localStorage: { getItem: () => null, setItem() {} },
+    localStorage: {
+      getItem: key => (storedTextByKey.has(key) ? storedTextByKey.get(key) : null),
+      setItem: (key, value) => storedTextByKey.set(key, String(value)),
+      removeItem: key => storedTextByKey.delete(key),
+    },
     performance: { now: () => fakeNowMs },
     requestAnimationFrame: () => 0,
     cancelAnimationFrame() {},
@@ -73,6 +80,7 @@ function loadGame() {
   return {
     run: source => vm.runInContext(source, context),
     pressKey: fakeDocument.pressKey,
+    storage: storedTextByKey,
     read: expression => JSON.parse(vm.runInContext(`JSON.stringify(${expression})`, context)),
     setNowMs: milliseconds => {
       fakeNowMs = milliseconds;
