@@ -40,6 +40,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Pieza fantasma** (_ghost piece_): muestra dónde aterrizará la pieza actual.
 - **Vista previa** de la siguiente pieza.
 - **Hold**: guarda la pieza actual en un slot lateral; al pulsar de nuevo intercambia con la guardada. Solo una vez por pieza.
+- **Energía y habilidades**: cada línea llena 10 % de la barra (Tetris 40 %). Con la barra llena, `1`–`5` activan: ver las 5 siguientes piezas, cambiar la pieza actual por una de tetrominó, ralentizar la caída 10 s, deshacer la última colocación o reservar un hold extra.
+- **Modo desafío**: 5 niveles con objetivo: limpiar 40 líneas en 2 min, sobrevivir 60 s con basura cada 10 s, tablero con bloques fijos, piezas invisibles al tocar suelo y rotación antihoraria desde nivel 5. Se desbloquean en orden.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Combo**: limpiar líneas en turnos consecutivos multiplica la puntuación (x2, x3, x4…).
 - **T-spin**: bonus al girar una pieza T encajada en un hueco (3 de sus 4 esquinas ocupadas).
@@ -91,6 +93,7 @@ Después abre `http://localhost:8000` en el navegador.
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `C` / `Shift` | Reservar pieza (hold) — una vez por pieza |
+| `1` – `5` | Habilidad (solo con la barra de energía llena) |
 | `P`       | Pausar / reanudar                 |
 
 ---
@@ -169,9 +172,11 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 ├── index.html      # Estructura del DOM y canvas
 ├── style.css       # Estilos del juego (dark theme)
 ├── hold.js         # Lógica del hold (reservar pieza)
-├── game.js         # Toda la lógica del Tetris
+├── skills.js       # Energía y habilidades
+├── challenge.js    # Niveles del modo desafío y menú
+├── game.js         # Bucle, tablero, puntuación y render
 ├── package.json    # Script npm test
-├── tests/          # Pruebas con node:test (scoring, hold)
+├── tests/          # Pruebas con node:test (scoring, hold, skills, challenge)
 └── README.md
 ```
 

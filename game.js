@@ -70,7 +70,7 @@ const restartBtn = document.getElementById('restart-btn');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let piecesCreated, powerupPieceNumber, frozenUntil, isSingleRewardPending;
-let comboCount, isBackToBackActive, floatingTexts = [], audioContext = null;
+let comboCount, isBackToBackActive, floatingTexts = [], audioContext = null, pieceQueue = [];
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -100,7 +100,7 @@ function randomPowerupName() {
   return names[randomInt(0, names.length - 1)];
 }
 
-function createNextPiece() {
+function generatePiece() {
   piecesCreated++;
   const piece = isSingleRewardPending ? createPieceOfType(SINGLE_TYPE) : randomPiece();
   isSingleRewardPending = false;
@@ -108,6 +108,10 @@ function createNextPiece() {
   if (piecesCreated % POWERUP_CYCLE === 0)
     powerupPieceNumber = piecesCreated + randomInt(1, POWERUP_CYCLE);
   return piece;
+}
+
+function createNextPiece() {
+  return pieceQueue.length > 0 ? pieceQueue.shift() : generatePiece();
 }
 
 function collide(shape, ox, oy) {
@@ -132,8 +136,12 @@ function rotateCW(shape) {
   return result;
 }
 
+function rotateCounterClockwise(shape) {
+  return rotateCW(rotateCW(rotateCW(shape)));
+}
+
 function tryRotate() {
-  const rotated = rotateCW(current.shape);
+  const rotated = rotatePieceShape(current.shape);
   const kicks = [0, -1, 1, -2, 2];
   for (const kick of kicks) {
     if (!collide(rotated, current.x + kick, current.y)) {
@@ -228,8 +236,12 @@ function isBoardEmpty() {
 function recordClearedLines(clearedCount) {
   if (clearedCount === TETRIS_LINES) isSingleRewardPending = true;
   lines += clearedCount;
-  level = Math.floor(lines / 10) + 1;
-  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+  level = startingLevelNumber() + Math.floor(lines / 10);
+  dropInterval = dropIntervalForLevel(level);
+}
+
+function dropIntervalForLevel(levelNumber) {
+  return Math.max(100, 1000 - (levelNumber - 1) * 90);
 }
 
 function isCellBlocked(col, row) {
@@ -322,13 +334,16 @@ function softDrop() {
 
 function lockPiece() {
   const isTSpinLock = isTSpin();
+  saveUndoSnapshot();
   merge();
   if (current.powerup) applyPowerup(current);
   const clearedCount = removeFullRows();
   rewardClear(clearedCount, isTSpinLock);
   recordClearedLines(clearedCount);
+  gainEnergy(clearedCount);
   updateHUD();
   isHoldUsedThisPiece = false;
+  isUpcomingRevealed = false;
   spawn();
 }
 
@@ -345,6 +360,8 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  drawEnergy();
+  drawUpcomingPieces();
 }
 
 function themeColor(name) {
@@ -416,18 +433,20 @@ function draw() {
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
-  // ghost
-  const gy = ghostY();
-  for (let r = 0; r < current.shape.length; r++)
-    for (let c = 0; c < current.shape[r].length; c++)
-      if (current.shape[r][c])
-        drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
+  if (!isPieceHiddenNow()) {
+    // ghost
+    const gy = ghostY();
+    for (let r = 0; r < current.shape.length; r++)
+      for (let c = 0; c < current.shape[r].length; c++)
+        if (current.shape[r][c])
+          drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
 
-  // current piece
-  for (let r = 0; r < current.shape.length; r++)
-    for (let c = 0; c < current.shape[r].length; c++)
-      drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
-  drawPowerupLabel(ctx, current, current.x, current.y, BLOCK);
+    // current piece
+    for (let r = 0; r < current.shape.length; r++)
+      for (let c = 0; c < current.shape[r].length; c++)
+        drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
+    drawPowerupLabel(ctx, current, current.x, current.y, BLOCK);
+  }
   drawFloatingTexts();
 }
 
@@ -449,34 +468,44 @@ function drawNext() {
   drawPiecePreview(nextCanvas, next);
 }
 
-function endGame() {
-  gameOver = true;
-  cancelAnimationFrame(animId);
-  overlayTitle.textContent = 'GAME OVER';
-  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+function showOverlay(title, detail, restartLabel) {
+  overlayTitle.textContent = title;
+  overlayScore.textContent = detail;
+  restartBtn.textContent = restartLabel ?? '';
+  restartBtn.classList.toggle('hidden', restartLabel === null);
+  levelMenuEl.classList.add('hidden');
   overlay.classList.remove('hidden');
 }
 
+function endGame() {
+  if (activeChallengeLevel()) {
+    finishChallengeLevel('lost');
+    return;
+  }
+  gameOver = true;
+  cancelAnimationFrame(animId);
+  showOverlay('GAME OVER', `Puntuación: ${score.toLocaleString()}`, 'Reiniciar');
+}
+
 function togglePause() {
-  if (gameOver) return;
+  if (gameOver || isMenuOpen) return;
   paused = !paused;
   if (!paused) {
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    showOverlay('PAUSA', '', 'Reiniciar');
   }
 }
 
 function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
+  advanceSlowTimer(dt);
   if (isFrozen()) dropAccum = 0;
   else dropAccum += dt;
-  if (dropAccum >= dropInterval) {
+  if (dropAccum >= effectiveDropInterval()) {
     dropAccum = 0;
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
@@ -485,19 +514,20 @@ function loop(ts) {
       lockPiece();
     }
   }
+  updateChallenge(dt);
   draw();
   if (gameOver) return;
   animId = requestAnimationFrame(loop);
 }
 
 function init() {
-  board = createBoard();
+  board = createStartingBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startingLevelNumber();
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = dropIntervalForLevel(level);
   dropAccum = 0;
   frozenUntil = 0;
   piecesCreated = 0;
@@ -505,8 +535,10 @@ function init() {
   comboCount = 0;
   isBackToBackActive = false;
   floatingTexts = [];
+  pieceQueue = [];
   heldPiece = null;
   isHoldUsedThisPiece = false;
+  resetSkills();
   powerupPieceNumber = randomInt(1, POWERUP_CYCLE);
   lastTime = performance.now();
   next = createNextPiece();
@@ -519,6 +551,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (isMenuOpen) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -550,11 +583,13 @@ document.addEventListener('keydown', e => {
     case 'ShiftRight':
       holdCurrentPiece();
       break;
+    default:
+      useSkillForKey(e.code);
   }
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', handleRestartClick);
 
 const themeToggle = document.getElementById('theme-toggle');
 const THEME_KEY = 'tetris-theme';
@@ -569,6 +604,7 @@ function applyTheme(theme) {
   draw();
   drawNext();
   drawHold();
+  drawUpcomingPieces();
 }
 
 themeToggle.addEventListener('click', () => {
@@ -579,6 +615,7 @@ themeToggle.addEventListener('click', () => {
 });
 
 init();
+openLevelMenu();
 
 let savedTheme = 'dark';
 try { savedTheme = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (e) {}

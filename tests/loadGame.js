@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const SOURCE_FILE_NAMES = ['hold.js', 'game.js'];
+const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'game.js'];
 const BOARD_COLUMN_COUNT = 10;
 
 function createFakeContext() {
@@ -25,6 +25,9 @@ function createFakeElement() {
     height: 600,
     dataset: {},
     classList: { add() {}, remove() {}, toggle() {} },
+    style: {},
+    replaceChildren() {},
+    appendChild() {},
     setAttribute() {},
     addEventListener() {},
     blur() {},
@@ -41,6 +44,7 @@ function createFakeDocument() {
       if (!elementsById.has(id)) elementsById.set(id, createFakeElement());
       return elementsById.get(id);
     },
+    createElement: () => createFakeElement(),
     addEventListener(eventType, handler) {
       if (eventType === 'keydown') keyDownHandlers.push(handler);
     },
@@ -64,6 +68,7 @@ function loadGame() {
   for (const fileName of SOURCE_FILE_NAMES) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8'), context);
   }
+  vm.runInContext('startFreeGame();', context);
 
   return {
     run: source => vm.runInContext(source, context),
