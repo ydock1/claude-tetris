@@ -60,7 +60,7 @@
             <li><kbd>Space</kbd> caída</li>
             <li><kbd>C</kbd><kbd>Shift</kbd> reservar</li>
             <li><kbd>1</kbd>–<kbd>5</kbd> habilidad (con energía llena)</li>
-            <li><kbd>P</kbd> pausa</li>
+            <li><kbd>P</kbd> / <kbd>Esc</kbd> pausa</li>
           </ul>
         </div>
       </aside>
@@ -85,6 +85,23 @@
           </table>
           <button id="score-reset-btn" class="menu-btn" type="button">Borrar récords</button>
         </section>
+        <div id="pause-menu" class="pause-menu hidden">
+          <button id="resume-btn" class="menu-btn" type="button">Reanudar</button>
+          <div id="pause-level-select" class="start-level-select hidden">
+            <span class="label">NIVEL INICIAL</span>
+            <div id="pause-level-buttons" class="start-level-buttons"></div>
+          </div>
+          <button id="controls-toggle-btn" class="menu-btn" type="button">Ver controles</button>
+          <ul id="pause-controls" class="pause-controls hidden">
+            <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+            <li><kbd>↑</kbd> rotar</li>
+            <li><kbd>↓</kbd> bajar</li>
+            <li><kbd>Space</kbd> caída</li>
+            <li><kbd>C</kbd><kbd>Shift</kbd> reservar</li>
+            <li><kbd>1</kbd>–<kbd>5</kbd> habilidad (con energía llena)</li>
+            <li><kbd>P</kbd> / <kbd>Esc</kbd> pausa</li>
+          </ul>
+        </div>
         <button id="restart-btn">Reiniciar</button>
         <button id="menu-btn" class="menu-btn" type="button">Menú de niveles</button>
       </div>

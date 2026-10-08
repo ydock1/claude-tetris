@@ -52,7 +52,7 @@ function activeChallengeLevel() {
 
 function startingLevelNumber() {
   const level = activeChallengeLevel();
-  return level ? level.startLevel : 1;
+  return level ? level.startLevel : selectedStartLevel;
 }
 
 function createStartingBoard() {
