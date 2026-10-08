@@ -67,6 +67,11 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const scoreBoardEl = document.getElementById('score-board');
+const scoreTableBodyEl = document.getElementById('score-table-body');
+const scoreNameFormEl = document.getElementById('score-name-form');
+const scoreNameInputEl = document.getElementById('score-name-input');
+const scoreResetBtn = document.getElementById('score-reset-btn');
 const pauseMenuEl = document.getElementById('pause-menu');
 const resumeBtn = document.getElementById('resume-btn');
 const controlsToggleBtn = document.getElementById('controls-toggle-btn');
@@ -81,7 +86,8 @@ let activeSkin = DEFAULT_SKIN;
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let selectedStartLevel = 1, runStartLevel = 1;
 let piecesCreated, powerupPieceNumber, frozenUntil, isSingleRewardPending;
-let comboCount, isBackToBackActive, floatingTexts = [], audioContext = null, pieceQueue = [];
+let comboCount, bestComboCount = 0, isBackToBackActive, floatingTexts = [], audioContext = null, pieceQueue = [];
+let recordedScoreEntry = null, recordedScoreEntries = [];
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -271,6 +277,7 @@ function rewardClear(clearedCount, isTSpinLock) {
   const isTetris = clearedCount === TETRIS_LINES;
   const isBackToBackBonus = isTetris && isBackToBackActive;
   comboCount = clearedCount > 0 ? comboCount + 1 : 0;
+  bestComboCount = Math.max(bestComboCount, comboCount);
   if (isTetris) isBackToBackActive = true;
   else if (clearedCount > 0) isBackToBackActive = false;
 
@@ -497,6 +504,8 @@ function showOverlay(title, detail, restartLabel) {
   restartBtn.textContent = restartLabel ?? '';
   restartBtn.classList.toggle('hidden', restartLabel === null);
   levelMenuEl.classList.add('hidden');
+  scoreBoardEl.classList.add('hidden');
+  scoreNameFormEl.classList.add('hidden');
   pauseMenuEl.classList.add('hidden');
   overlay.classList.remove('hidden');
 }
@@ -515,7 +524,51 @@ function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   showOverlay('GAME OVER', `Puntuación: ${score.toLocaleString()}`, 'Reiniciar');
+  recordedScoreEntry = createScoreEntry({ name: '', score, lines, bestCombo: bestComboCount });
+  recordedScoreEntries = recordScoreEntry(recordedScoreEntry);
+  showScoreBoard(recordedScoreEntries, recordedScoreEntry);
+  const isRecordQualified = recordedScoreEntries.includes(recordedScoreEntry);
+  scoreNameFormEl.classList.toggle('hidden', !isRecordQualified);
+  if (isRecordQualified) {
+    scoreNameInputEl.value = '';
+    scoreNameInputEl.focus();
+  }
 }
+
+function showScoreBoard(entries = loadScoreEntries(), highlightedEntry = null) {
+  scoreTableBodyEl.replaceChildren(...entries.map((entry, index) => createScoreRow(entry, index + 1, entry === highlightedEntry)));
+  scoreBoardEl.classList.remove('hidden');
+}
+
+function createScoreRow(entry, rank, isHighlighted) {
+  const row = document.createElement('tr');
+  if (isHighlighted) row.classList.add('score-row-highlight');
+  for (const cellValue of [rank, entry.name, entry.score.toLocaleString(), entry.lines, entry.bestCombo]) {
+    const cell = document.createElement('td');
+    cell.textContent = cellValue;
+    row.appendChild(cell);
+  }
+  return row;
+}
+
+scoreNameFormEl.addEventListener('submit', event => {
+  event.preventDefault();
+  scoreNameInputEl.blur();
+  if (recordedScoreEntry === null) return;
+  recordedScoreEntry.name = normalizePlayerName(scoreNameInputEl.value);
+  saveScoreEntries(recordedScoreEntries);
+  scoreNameFormEl.classList.add('hidden');
+  showScoreBoard(recordedScoreEntries, recordedScoreEntry);
+});
+
+scoreResetBtn.addEventListener('click', () => {
+  resetScoreEntries();
+  recordedScoreEntry = null;
+  recordedScoreEntries = [];
+  scoreNameFormEl.classList.add('hidden');
+  showScoreBoard([], null);
+  scoreResetBtn.blur();
+});
 
 function togglePause() {
   if (gameOver || isMenuOpen) return;
@@ -596,6 +649,7 @@ function init() {
   piecesCreated = 0;
   isSingleRewardPending = false;
   comboCount = 0;
+  bestComboCount = 0;
   isBackToBackActive = false;
   floatingTexts = [];
   pieceQueue = [];
@@ -614,6 +668,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
   if (e.code.startsWith('Arrow')) e.preventDefault();
   if (isMenuOpen) return;
   if (e.code === 'KeyP' || e.code === 'Escape') {

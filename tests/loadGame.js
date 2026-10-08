@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'skins.js', 'game.js'];
+const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'scores.js', 'skins.js', 'game.js'];
 const BOARD_COLUMN_COUNT = 10;
 
 function createFakeContext() {
@@ -55,6 +55,8 @@ function createFakeElement() {
       for (const handler of listenersByType.get('click') ?? []) handler({});
     },
     blur() {},
+    focus() {},
+    value: '',
     getContext: () => createFakeContext(),
   };
 }
@@ -72,8 +74,8 @@ function createFakeDocument() {
     addEventListener(eventType, handler) {
       if (eventType === 'keydown') keyDownHandlers.push(handler);
     },
-    pressKey: (code, { repeat = false } = {}) => {
-      for (const handler of keyDownHandlers) handler({ code, repeat, preventDefault() {} });
+    pressKey: (code, { repeat = false, tagName } = {}) => {
+      for (const handler of keyDownHandlers) handler({ code, repeat, target: { tagName }, preventDefault() {} });
     },
   };
 }
@@ -85,6 +87,8 @@ function createFakeStorage(initialEntries = {}) {
     setItem: (key, value) => {
       entries.set(key, String(value));
     },
+    removeItem: key => entries.delete(key),
+    entries,
   };
 }
 
@@ -107,6 +111,7 @@ function loadGame({ storage = createFakeStorage() } = {}) {
   return {
     run: source => vm.runInContext(source, context),
     pressKey: fakeDocument.pressKey,
+    storage: storage.entries,
     read: expression => JSON.parse(vm.runInContext(`JSON.stringify(${expression})`, context)),
     setNowMs: milliseconds => {
       fakeNowMs = milliseconds;
