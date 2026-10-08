@@ -82,6 +82,7 @@ const startLevelButtonsEl = document.getElementById('pause-level-buttons');
 const START_LEVEL_COUNT = 10;
 const startLevelButtons = buildStartLevelButtons();
 
+let activeSkin = DEFAULT_SKIN;
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let selectedStartLevel = 1, runStartLevel = 1;
 let piecesCreated, powerupPieceNumber, frozenUntil, isSingleRewardPending;
@@ -381,20 +382,32 @@ function updateHUD() {
   drawUpcomingPieces();
 }
 
+const themeColorCache = new Map();
+
 function themeColor(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  if (!themeColorCache.has(name))
+    themeColorCache.set(name, getComputedStyle(document.documentElement).getPropertyValue(name).trim());
+  return themeColorCache.get(name);
+}
+
+function blockColor(colorIndex) {
+  if (activeSkin.palette) return activeSkin.palette[colorIndex] ?? COLORS[colorIndex];
+  return themeColor(`--piece-${colorIndex}`) || COLORS[colorIndex];
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = themeColor(`--piece-${colorIndex}`) || COLORS[colorIndex];
+  context.save();
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = themeColor('--block-highlight');
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  activeSkin.drawBlockStyle({
+    context,
+    left: x * size + 1,
+    top: y * size + 1,
+    side: size - 2,
+    color: blockColor(colorIndex),
+    highlightColor: themeColor('--block-highlight'),
+  });
+  context.restore();
 }
 
 function drawGrid() {
@@ -716,17 +729,22 @@ controlsToggleBtn.addEventListener('click', () => {
 const themeToggle = document.getElementById('theme-toggle');
 const THEME_KEY = 'tetris-theme';
 
-function applyTheme(theme) {
-  const light = theme === 'light';
-  document.documentElement.dataset.theme = theme;
-  themeToggle.setAttribute('aria-pressed', String(light));
-  themeToggle.setAttribute('aria-label', light ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
-  themeToggle.textContent = light ? '☾ Oscuro' : '☀ Claro';
+function redrawAllCanvases() {
   // el bucle no redibuja en pausa o game over
   draw();
   drawNext();
   drawHold();
   drawUpcomingPieces();
+}
+
+function applyTheme(theme) {
+  const light = theme === 'light';
+  document.documentElement.dataset.theme = theme;
+  themeColorCache.clear();
+  themeToggle.setAttribute('aria-pressed', String(light));
+  themeToggle.setAttribute('aria-label', light ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
+  themeToggle.textContent = light ? '☾ Oscuro' : '☀ Claro';
+  redrawAllCanvases();
 }
 
 themeToggle.addEventListener('click', () => {
@@ -736,9 +754,27 @@ themeToggle.addEventListener('click', () => {
   themeToggle.blur(); // no robar el teclado al juego
 });
 
+const skinSelect = document.getElementById('skin-select');
+
+function applySkin(skin) {
+  activeSkin = skin;
+  document.documentElement.dataset.skin = skin.name;
+  themeColorCache.clear();
+  skinSelect.value = skin.name;
+  redrawAllCanvases();
+}
+
+skinSelect.addEventListener('change', () => {
+  const skin = findSkinByName(skinSelect.value);
+  storeSkinName(skin.name);
+  applySkin(skin);
+  skinSelect.blur(); // no robar el teclado al juego
+});
+
 init();
 openLevelMenu();
 
 let savedTheme = 'dark';
 try { savedTheme = localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'; } catch (e) {}
 applyTheme(savedTheme);
+applySkin(findSkinByName(readStoredSkinName()));

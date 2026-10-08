@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'scores.js', 'game.js'];
+const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'scores.js', 'skins.js', 'game.js'];
 const BOARD_COLUMN_COUNT = 10;
 
 function createFakeContext() {
@@ -34,7 +34,7 @@ function createFakeClassList() {
 }
 
 function createFakeElement() {
-  const clickHandlers = [];
+  const listenersByType = new Map();
   return {
     textContent: '',
     width: 300,
@@ -46,10 +46,13 @@ function createFakeElement() {
     appendChild() {},
     setAttribute() {},
     addEventListener(eventType, handler) {
-      if (eventType === 'click') clickHandlers.push(handler);
+      listenersByType.set(eventType, [...(listenersByType.get(eventType) ?? []), handler]);
+    },
+    dispatchEvent(event) {
+      for (const handler of listenersByType.get(event.type) ?? []) handler(event);
     },
     click() {
-      for (const handler of clickHandlers) handler({});
+      for (const handler of listenersByType.get('click') ?? []) handler({});
     },
     blur() {},
     focus() {},
@@ -77,18 +80,25 @@ function createFakeDocument() {
   };
 }
 
-function loadGame() {
+function createFakeStorage(initialEntries = {}) {
+  const entries = new Map(Object.entries(initialEntries));
+  return {
+    getItem: key => (entries.has(key) ? entries.get(key) : null),
+    setItem: (key, value) => {
+      entries.set(key, String(value));
+    },
+    removeItem: key => entries.delete(key),
+    entries,
+  };
+}
+
+function loadGame({ storage = createFakeStorage() } = {}) {
   let fakeNowMs = 0;
   const fakeDocument = createFakeDocument();
-  const storedTextByKey = new Map();
   const context = vm.createContext({
     document: fakeDocument,
     getComputedStyle: () => ({ getPropertyValue: () => '' }),
-    localStorage: {
-      getItem: key => (storedTextByKey.has(key) ? storedTextByKey.get(key) : null),
-      setItem: (key, value) => storedTextByKey.set(key, String(value)),
-      removeItem: key => storedTextByKey.delete(key),
-    },
+    localStorage: storage,
     performance: { now: () => fakeNowMs },
     requestAnimationFrame: () => 0,
     cancelAnimationFrame() {},
@@ -101,7 +111,7 @@ function loadGame() {
   return {
     run: source => vm.runInContext(source, context),
     pressKey: fakeDocument.pressKey,
-    storage: storedTextByKey,
+    storage: storage.entries,
     read: expression => JSON.parse(vm.runInContext(`JSON.stringify(${expression})`, context)),
     setNowMs: milliseconds => {
       fakeNowMs = milliseconds;
@@ -124,4 +134,4 @@ function lockPieceWith(game, { type, shape, x, y, isLastMoveRotation = false }) 
   game.run('lockPiece();');
 }
 
-module.exports = { loadGame, rowCells, fillCells, lockPieceWith };
+module.exports = { loadGame, createFakeStorage, rowCells, fillCells, lockPieceWith };
