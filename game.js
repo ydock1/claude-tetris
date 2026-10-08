@@ -75,6 +75,7 @@ const startLevelSelectEl = document.getElementById('pause-level-select');
 const startLevelButtonsEl = document.getElementById('pause-level-buttons');
 
 const START_LEVEL_COUNT = 10;
+const startLevelButtons = buildStartLevelButtons();
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let selectedStartLevel = 1, runStartLevel = 1;
@@ -508,7 +509,6 @@ function togglePause() {
   paused = !paused;
   if (!paused) {
     hideOverlay();
-    renderStartLevelSelector(false);
     lastTime = performance.now();
     loop(lastTime);
   } else {
@@ -523,15 +523,23 @@ function showPauseOverlay() {
   renderStartLevelSelector(true);
 }
 
+function buildStartLevelButtons() {
+  return Array.from({ length: START_LEVEL_COUNT }, (_, index) => {
+    const levelNumber = index + 1;
+    const levelButton = createMenuButton(String(levelNumber), () => selectStartLevel(levelNumber));
+    startLevelButtonsEl.appendChild(levelButton);
+    return levelButton;
+  });
+}
+
 function renderStartLevelSelector(isVisible) {
   const isSelectorShown = isVisible && challengeLevelIndex === null;
   startLevelSelectEl.classList.toggle('hidden', !isSelectorShown);
-  startLevelButtonsEl.replaceChildren();
   if (!isSelectorShown) return;
-  for (let levelNumber = 1; levelNumber <= START_LEVEL_COUNT; levelNumber++) {
-    const levelButton = createMenuButton(String(levelNumber), () => selectStartLevel(levelNumber));
-    levelButton.classList.toggle('selected', levelNumber === selectedStartLevel);
-    startLevelButtonsEl.appendChild(levelButton);
+  for (const [index, levelButton] of startLevelButtons.entries()) {
+    const isSelected = index + 1 === selectedStartLevel;
+    levelButton.classList.toggle('selected', isSelected);
+    levelButton.setAttribute('aria-pressed', String(isSelected));
   }
 }
 
@@ -569,7 +577,6 @@ function init() {
   level = runStartLevel;
   paused = false;
   gameOver = false;
-  renderStartLevelSelector(false);
   dropInterval = dropIntervalForLevel(level);
   dropAccum = 0;
   frozenUntil = 0;

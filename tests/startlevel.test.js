@@ -45,6 +45,12 @@ test('un desafío ignora el nivel inicial elegido', () => {
   assert.equal(game.read('startingLevelNumber()'), CHALLENGE_REVERSED_ROTATION_START_LEVEL);
 });
 
+test('el selector de nivel inicial no se muestra durante la pausa de un desafío', () => {
+  const game = loadGame();
+  game.run(`startChallengeLevel(${CHALLENGE_REVERSED_ROTATION_INDEX}); togglePause();`);
+  assert.equal(game.read("startLevelSelectEl.classList.contains('hidden')"), true);
+});
+
 test('volver al juego libre tras un desafío usa el nivel elegido', () => {
   const game = loadGame();
   game.run(`selectStartLevel(9); startChallengeLevel(${CHALLENGE_REVERSED_ROTATION_INDEX}); startFreeGame();`);
