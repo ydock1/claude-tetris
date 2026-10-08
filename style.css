@@ -79,13 +79,16 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  min-height: 100vh;
+  gap: 12px;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   user-select: none;
 }
 
 .title {
-  font-size: 32px;
+  font-size: 28px;
+  line-height: 1;
   font-weight: 800;
   letter-spacing: 10px;
   padding-left: 10px; /* compensa el letter-spacing final para centrar */
@@ -113,6 +116,9 @@ body {
 
 #board {
   display: block;
+  height: min(600px, calc(100dvh - 90px));
+  width: auto;
+  aspect-ratio: 1 / 2;
   border: 1px solid var(--border);
   background: var(--canvas-bg);
   border-radius: 4px;
@@ -126,6 +132,15 @@ body {
   flex-direction: column;
   gap: 20px;
   padding-top: 4px;
+}
+
+@media (max-height: 760px) {
+  .panel { gap: 10px; }
+  .value { font-size: 20px; }
+  #next-canvas, #hold-canvas { width: 90px; height: 90px; }
+  #upcoming-canvas { width: 80px; height: 200px; }
+  .controls ul { gap: 3px; }
+  .controls li { font-size: 11px; }
 }
 
 .panel-section {

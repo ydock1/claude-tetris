@@ -551,6 +551,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.code.startsWith('Arrow')) e.preventDefault();
   if (isMenuOpen) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
