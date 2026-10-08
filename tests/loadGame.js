@@ -18,6 +18,21 @@ function createFakeContext() {
   });
 }
 
+function createFakeClassList() {
+  const classNames = new Set();
+  return {
+    add: (...names) => names.forEach(name => classNames.add(name)),
+    remove: (...names) => names.forEach(name => classNames.delete(name)),
+    toggle: (name, force) => {
+      const shouldHave = force ?? !classNames.has(name);
+      if (shouldHave) classNames.add(name);
+      else classNames.delete(name);
+      return shouldHave;
+    },
+    contains: name => classNames.has(name),
+  };
+}
+
 function createFakeElement() {
   const listenersByType = new Map();
   return {
@@ -25,7 +40,7 @@ function createFakeElement() {
     width: 300,
     height: 600,
     dataset: {},
-    classList: { add() {}, remove() {}, toggle() {} },
+    classList: createFakeClassList(),
     style: {},
     replaceChildren() {},
     appendChild() {},
@@ -35,6 +50,9 @@ function createFakeElement() {
     },
     dispatchEvent(event) {
       for (const handler of listenersByType.get(event.type) ?? []) handler(event);
+    },
+    click() {
+      for (const handler of listenersByType.get('click') ?? []) handler({});
     },
     blur() {},
     getContext: () => createFakeContext(),
@@ -54,8 +72,8 @@ function createFakeDocument() {
     addEventListener(eventType, handler) {
       if (eventType === 'keydown') keyDownHandlers.push(handler);
     },
-    pressKey: code => {
-      for (const handler of keyDownHandlers) handler({ code, preventDefault() {} });
+    pressKey: (code, { repeat = false } = {}) => {
+      for (const handler of keyDownHandlers) handler({ code, repeat, preventDefault() {} });
     },
   };
 }
