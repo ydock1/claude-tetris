@@ -247,6 +247,33 @@ body {
   cursor: not-allowed;
 }
 
+/* ---- Nivel inicial (pausa) ---- */
+.start-level-select {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.start-level-select.hidden {
+  display: none;
+}
+
+.start-level-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.start-level-buttons .level-button {
+  padding: 6px 0;
+  min-width: 36px;
+}
+
+.level-button.selected {
+  box-shadow: inset 0 0 0 2px var(--on-accent);
+}
+
 /* ---- Controles ---- */
 .controls ul {
   list-style: none;
