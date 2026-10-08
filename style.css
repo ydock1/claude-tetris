@@ -18,6 +18,13 @@
   --danger: #e57373;
   --grid: #22222e;
   --block-highlight: rgba(255, 255, 255, 0.12);
+  --piece-1: #4dd0e1;
+  --piece-2: #ffd54f;
+  --piece-3: #ba68c8;
+  --piece-4: #81c784;
+  --piece-5: #e57373;
+  --piece-6: #90caf9;
+  --piece-7: #ffb74d;
 }
 
 [data-theme="light"] {
@@ -39,6 +46,13 @@
   --danger: #d32f2f;
   --grid: #e2e4ee;
   --block-highlight: rgba(255, 255, 255, 0.35);
+  --piece-1: #00a5bd;
+  --piece-2: #e0a800;
+  --piece-3: #8e24aa;
+  --piece-4: #2e9e44;
+  --piece-5: #d32f2f;
+  --piece-6: #1e63c9;
+  --piece-7: #ef6c00;
 }
 
 *, *::before, *::after {
@@ -215,9 +229,10 @@ kbd {
 
 /* ---- Toggle de tema ---- */
 .theme-toggle {
-  position: absolute;
+  position: fixed;
   top: 16px;
   right: 16px;
+  z-index: 10;
   background: var(--canvas-bg);
   color: var(--text);
   border: 1px solid var(--border);
