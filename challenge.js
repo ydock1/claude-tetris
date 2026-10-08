@@ -164,6 +164,7 @@ function openLevelMenu() {
   showOverlay('DESAFÍO', '', null);
   renderLevelMenu();
   levelMenuEl.classList.remove('hidden');
+  showScoreBoard();
 }
 
 function renderLevelMenu() {
