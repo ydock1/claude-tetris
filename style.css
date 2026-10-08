@@ -26,6 +26,10 @@
   --piece-6: #90caf9;
   --piece-7: #ffb74d;
   --piece-8: #f48fb1;
+  --piece-9: #c6ff00;
+  --piece-10: #536dfe;
+  --piece-11: #d500f9;
+  --piece-12: #1de9b6;
 }
 
 [data-theme="light"] {
@@ -55,6 +59,10 @@
   --piece-6: #1e63c9;
   --piece-7: #ef6c00;
   --piece-8: #c2185b;
+  --piece-9: #7cb342;
+  --piece-10: #3949ab;
+  --piece-11: #aa00ff;
+  --piece-12: #00bfa5;
 }
 
 *, *::before, *::after {

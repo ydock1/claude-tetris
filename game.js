@@ -14,6 +14,10 @@ const COLORS = [
   '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
   '#f48fb1', // tuerca - pink
+  '#c6ff00', // + - lima
+  '#536dfe', // U - índigo
+  '#d500f9', // Y - magenta
+  '#1de9b6', // 1x1 - menta
   '#9e9e9e', // comodín - gris
 ];
 
@@ -27,12 +31,21 @@ const PIECES = [
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
   [[8,8,8],[8,0,8],[8,8,8]],                  // tuerca
+  [[0,9,0],[9,9,9],[0,9,0]],                  // +
+  [[10,0,10],[10,10,10]],                     // U
+  [[0,11,0,0],[11,11,11,11]],                 // Y
+  [[12]],                                     // 1x1
 ];
 
+const TETROMINO_TYPES = [1, 2, 3, 4, 5, 6, 7, 8];
+const PENTOMINO_TYPES = [9, 10, 11];
+const SINGLE_TYPE = 12;
+const PENTOMINO_CHANCE = 0.15;
+const TETRIS_LINES = 4;
 const LINE_SCORES = [0, 100, 300, 500, 800];
 const POWERUP_CYCLE = 5;
 const FREEZE_MS = 5000;
-const WILDCARD_INDEX = 9;
+const WILDCARD_INDEX = 13;
 const POWERUP_LABELS = { bomba: 'B', rayo: 'R', tinte: 'T', gravedad: 'G', congelar: 'C' };
 
 const canvas = document.getElementById('board');
@@ -48,20 +61,29 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
-let piecesCreated, powerupPieceNumber, frozenUntil;
+let piecesCreated, powerupPieceNumber, frozenUntil, isSingleRewardPending;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
-function randomPiece() {
-  const type = Math.floor(Math.random() * (PIECES.length - 1)) + 1;
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomTypeFromList(types) {
+  return types[randomInt(0, types.length - 1)];
+}
+
+function createPieceOfType(type) {
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
 
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function randomPiece() {
+  const isPentomino = Math.random() < PENTOMINO_CHANCE;
+  const type = randomTypeFromList(isPentomino ? PENTOMINO_TYPES : TETROMINO_TYPES);
+  return createPieceOfType(type);
 }
 
 function randomPowerupName() {
@@ -71,7 +93,8 @@ function randomPowerupName() {
 
 function createNextPiece() {
   piecesCreated++;
-  const piece = randomPiece();
+  const piece = isSingleRewardPending ? createPieceOfType(SINGLE_TYPE) : randomPiece();
+  isSingleRewardPending = false;
   piece.powerup = piecesCreated === powerupPieceNumber ? randomPowerupName() : null;
   if (piecesCreated % POWERUP_CYCLE === 0)
     powerupPieceNumber = piecesCreated + randomInt(1, POWERUP_CYCLE);
@@ -186,6 +209,7 @@ function clearLines() {
     }
   }
   if (cleared) {
+    if (cleared === TETRIS_LINES) isSingleRewardPending = true;
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
@@ -370,6 +394,7 @@ function init() {
   dropAccum = 0;
   frozenUntil = 0;
   piecesCreated = 0;
+  isSingleRewardPending = false;
   powerupPieceNumber = randomInt(1, POWERUP_CYCLE);
   lastTime = performance.now();
   next = createNextPiece();
