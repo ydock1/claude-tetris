@@ -4,6 +4,6 @@
   "private": true,
   "description": "Tetris en JavaScript vanilla con HTML5 Canvas",
   "scripts": {
-    "test": "node --test tests/scoring.test.js tests/hold.test.js tests/skills.test.js tests/challenge.test.js"
+    "test": "node --test tests/scoring.test.js tests/hold.test.js tests/skills.test.js tests/challenge.test.js tests/skins.test.js"
   }
 }
