@@ -71,8 +71,14 @@ const pauseMenuEl = document.getElementById('pause-menu');
 const resumeBtn = document.getElementById('resume-btn');
 const controlsToggleBtn = document.getElementById('controls-toggle-btn');
 const pauseControlsEl = document.getElementById('pause-controls');
+const startLevelSelectEl = document.getElementById('pause-level-select');
+const startLevelButtonsEl = document.getElementById('pause-level-buttons');
+
+const START_LEVEL_COUNT = 10;
+const startLevelButtons = buildStartLevelButtons();
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let selectedStartLevel = 1, runStartLevel = 1;
 let piecesCreated, powerupPieceNumber, frozenUntil, isSingleRewardPending;
 let comboCount, isBackToBackActive, floatingTexts = [], audioContext = null, pieceQueue = [];
 
@@ -240,7 +246,7 @@ function isBoardEmpty() {
 function recordClearedLines(clearedCount) {
   if (clearedCount === TETRIS_LINES) isSingleRewardPending = true;
   lines += clearedCount;
-  level = startingLevelNumber() + Math.floor(lines / 10);
+  level = runStartLevel + Math.floor(lines / 10);
   dropInterval = dropIntervalForLevel(level);
 }
 
@@ -514,6 +520,32 @@ function togglePause() {
 function showPauseOverlay() {
   showOverlay('PAUSA', '', 'Reiniciar');
   pauseMenuEl.classList.remove('hidden');
+  renderStartLevelSelector(true);
+}
+
+function buildStartLevelButtons() {
+  return Array.from({ length: START_LEVEL_COUNT }, (_, index) => {
+    const levelNumber = index + 1;
+    const levelButton = createMenuButton(String(levelNumber), () => selectStartLevel(levelNumber));
+    startLevelButtonsEl.appendChild(levelButton);
+    return levelButton;
+  });
+}
+
+function renderStartLevelSelector(isVisible) {
+  const isSelectorShown = isVisible && challengeLevelIndex === null;
+  startLevelSelectEl.classList.toggle('hidden', !isSelectorShown);
+  if (!isSelectorShown) return;
+  for (const [index, levelButton] of startLevelButtons.entries()) {
+    const isSelected = index + 1 === selectedStartLevel;
+    levelButton.classList.toggle('selected', isSelected);
+    levelButton.setAttribute('aria-pressed', String(isSelected));
+  }
+}
+
+function selectStartLevel(levelNumber) {
+  selectedStartLevel = levelNumber;
+  renderStartLevelSelector(true);
 }
 
 function loop(ts) {
@@ -541,7 +573,8 @@ function init() {
   board = createStartingBoard();
   score = 0;
   lines = 0;
-  level = startingLevelNumber();
+  runStartLevel = startingLevelNumber();
+  level = runStartLevel;
   paused = false;
   gameOver = false;
   dropInterval = dropIntervalForLevel(level);
