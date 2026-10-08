@@ -47,6 +47,14 @@ const POWERUP_CYCLE = 5;
 const FREEZE_MS = 5000;
 const WILDCARD_INDEX = 13;
 const POWERUP_LABELS = { bomba: 'B', rayo: 'R', tinte: 'T', gravedad: 'G', congelar: 'C' };
+const T_PIECE_TYPE = 3;
+const TSPIN_SCORES = [400, 800, 1200, 1600];
+const TSPIN_CORNER_OFFSETS = [[0, 0], [2, 0], [0, 2], [2, 2]];
+const TSPIN_MIN_BLOCKED_CORNERS = 3;
+const BACK_TO_BACK_MULTIPLIER = 1.5;
+const PERFECT_CLEAR_SCORE = 1000;
+const FLOATING_TEXT_MS = 1200;
+const SOUND_BASE_HZ = 440;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -62,6 +70,7 @@ const restartBtn = document.getElementById('restart-btn');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let piecesCreated, powerupPieceNumber, frozenUntil, isSingleRewardPending;
+let comboCount, isBackToBackActive, floatingTexts = [], audioContext = null;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -77,7 +86,7 @@ function randomTypeFromList(types) {
 
 function createPieceOfType(type) {
   const shape = PIECES[type].map(row => [...row]);
-  return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+  return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0, isLastMoveRotation: false };
 }
 
 function randomPiece() {
@@ -130,6 +139,7 @@ function tryRotate() {
     if (!collide(rotated, current.x + kick, current.y)) {
       current.shape = rotated;
       current.x += kick;
+      current.isLastMoveRotation = true;
       return;
     }
   }
@@ -198,24 +208,90 @@ function isFrozen() {
   return performance.now() < frozenUntil;
 }
 
-function clearLines() {
-  let cleared = 0;
+function removeFullRows() {
+  let removedCount = 0;
   for (let r = ROWS - 1; r >= 0; r--) {
     if (board[r].every(v => v !== 0)) {
       board.splice(r, 1);
       board.unshift(new Array(COLS).fill(0));
-      cleared++;
+      removedCount++;
       r++;
     }
   }
-  if (cleared) {
-    if (cleared === TETRIS_LINES) isSingleRewardPending = true;
-    lines += cleared;
-    score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
-    updateHUD();
-  }
+  return removedCount;
+}
+
+function isBoardEmpty() {
+  return board.every(row => row.every(cell => cell === 0));
+}
+
+function recordClearedLines(clearedCount) {
+  if (clearedCount === TETRIS_LINES) isSingleRewardPending = true;
+  lines += clearedCount;
+  level = Math.floor(lines / 10) + 1;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+}
+
+function isCellBlocked(col, row) {
+  if (col < 0 || col >= COLS || row >= ROWS) return true;
+  return row >= 0 && board[row][col] !== 0;
+}
+
+function isTSpin() {
+  if (current.type !== T_PIECE_TYPE || !current.isLastMoveRotation) return false;
+  const blockedCorners = TSPIN_CORNER_OFFSETS.filter(([offsetCol, offsetRow]) =>
+    isCellBlocked(current.x + offsetCol, current.y + offsetRow));
+  return blockedCorners.length >= TSPIN_MIN_BLOCKED_CORNERS;
+}
+
+function rewardClear(clearedCount, isTSpinLock) {
+  const isTetris = clearedCount === TETRIS_LINES;
+  const isBackToBackBonus = isTetris && isBackToBackActive;
+  comboCount = clearedCount > 0 ? comboCount + 1 : 0;
+  if (isTetris) isBackToBackActive = true;
+  else if (clearedCount > 0) isBackToBackActive = false;
+
+  const basePoints = isTSpinLock ? TSPIN_SCORES[clearedCount] : LINE_SCORES[clearedCount];
+  let points = basePoints * level * Math.max(comboCount, 1);
+  if (isBackToBackBonus) points *= BACK_TO_BACK_MULTIPLIER;
+  const isPerfectClear = clearedCount > 0 && isBoardEmpty();
+  if (isPerfectClear) points += PERFECT_CLEAR_SCORE * level;
+  score += Math.floor(points);
+
+  celebrateLock({ clearedCount, isTSpinLock, isBackToBackBonus, isPerfectClear });
+}
+
+function celebrateLock({ clearedCount, isTSpinLock, isBackToBackBonus, isPerfectClear }) {
+  const labels = [];
+  if (isTSpinLock) labels.push('T-SPIN');
+  if (isBackToBackBonus) labels.push('B2B');
+  if (comboCount >= 2) labels.push(`COMBO x${comboCount}`);
+  if (isPerfectClear) labels.push('PERFECT CLEAR');
+  for (const label of labels) showFloatingText(label);
+
+  if (clearedCount === 0) return;
+  const pitchHz = SOUND_BASE_HZ * 2 ** (comboCount / 12);
+  playTone(pitchHz);
+  if (isTSpinLock || clearedCount === TETRIS_LINES || isPerfectClear) playTone(pitchHz * 1.5);
+}
+
+function showFloatingText(label) {
+  floatingTexts.push({ label, startedAt: performance.now() });
+}
+
+function playTone(frequencyHz) {
+  try {
+    audioContext ??= new AudioContext();
+    const now = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.frequency.value = frequencyHz;
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.3);
+  } catch (error) {}
 }
 
 function ghostY() {
@@ -226,7 +302,9 @@ function ghostY() {
 
 function hardDrop() {
   const gy = ghostY();
-  score += (gy - current.y) * 2;
+  const dropDistance = gy - current.y;
+  score += dropDistance * 2;
+  if (dropDistance > 0) current.isLastMoveRotation = false;
   current.y = gy;
   lockPiece();
 }
@@ -234,6 +312,7 @@ function hardDrop() {
 function softDrop() {
   if (!collide(current.shape, current.x, current.y + 1)) {
     current.y++;
+    current.isLastMoveRotation = false;
     score += 1;
     updateHUD();
   } else {
@@ -242,9 +321,13 @@ function softDrop() {
 }
 
 function lockPiece() {
+  const isTSpinLock = isTSpin();
   merge();
   if (current.powerup) applyPowerup(current);
-  clearLines();
+  const clearedCount = removeFullRows();
+  rewardClear(clearedCount, isTSpinLock);
+  recordClearedLines(clearedCount);
+  updateHUD();
   spawn();
 }
 
@@ -308,6 +391,21 @@ function drawPowerupLabel(context, piece, originCol, originRow, size) {
   context.fillText(POWERUP_LABELS[piece.powerup], centerX, centerY);
 }
 
+function drawFloatingTexts() {
+  const now = performance.now();
+  floatingTexts = floatingTexts.filter(text => now - text.startedAt < FLOATING_TEXT_MS);
+  for (const [index, text] of floatingTexts.entries()) {
+    const progress = (now - text.startedAt) / FLOATING_TEXT_MS;
+    ctx.globalAlpha = 1 - progress;
+    ctx.fillStyle = themeColor('--accent');
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text.label, canvas.width / 2, canvas.height / 3 - index * 24 - progress * 40);
+  }
+  ctx.globalAlpha = 1;
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid();
@@ -329,6 +427,7 @@ function draw() {
     for (let c = 0; c < current.shape[r].length; c++)
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
   drawPowerupLabel(ctx, current, current.x, current.y, BLOCK);
+  drawFloatingTexts();
 }
 
 function drawNext() {
@@ -374,6 +473,7 @@ function loop(ts) {
     dropAccum = 0;
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
+      current.isLastMoveRotation = false;
     } else {
       lockPiece();
     }
@@ -395,6 +495,9 @@ function init() {
   frozenUntil = 0;
   piecesCreated = 0;
   isSingleRewardPending = false;
+  comboCount = 0;
+  isBackToBackActive = false;
+  floatingTexts = [];
   powerupPieceNumber = randomInt(1, POWERUP_CYCLE);
   lastTime = performance.now();
   next = createNextPiece();
@@ -410,10 +513,16 @@ document.addEventListener('keydown', e => {
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
-      if (!collide(current.shape, current.x - 1, current.y)) current.x--;
+      if (!collide(current.shape, current.x - 1, current.y)) {
+        current.x--;
+        current.isLastMoveRotation = false;
+      }
       break;
     case 'ArrowRight':
-      if (!collide(current.shape, current.x + 1, current.y)) current.x++;
+      if (!collide(current.shape, current.x + 1, current.y)) {
+        current.x++;
+        current.isLastMoveRotation = false;
+      }
       break;
     case 'ArrowDown':
       softDrop();
