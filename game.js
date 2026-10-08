@@ -59,7 +59,7 @@ const SOUND_BASE_HZ = 440;
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
-const nextCtx = nextCanvas.getContext('2d');
+const holdCanvas = document.getElementById('hold-canvas');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
@@ -328,6 +328,7 @@ function lockPiece() {
   rewardClear(clearedCount, isTSpinLock);
   recordClearedLines(clearedCount);
   updateHUD();
+  isHoldUsedThisPiece = false;
   spawn();
 }
 
@@ -430,16 +431,22 @@ function draw() {
   drawFloatingTexts();
 }
 
-function drawNext() {
-  const NB = 30;
-  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  const shape = next.shape;
+function drawPiecePreview(previewCanvas, piece) {
+  const PREVIEW_BLOCK = 30;
+  const previewCtx = previewCanvas.getContext('2d');
+  previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+  if (!piece) return;
+  const shape = piece.shape;
   const offX = Math.floor((4 - shape[0].length) / 2);
   const offY = Math.floor((4 - shape.length) / 2);
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
-      drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
-  drawPowerupLabel(nextCtx, next, offX, offY, NB);
+      drawBlock(previewCtx, offX + c, offY + r, shape[r][c], PREVIEW_BLOCK);
+  drawPowerupLabel(previewCtx, piece, offX, offY, PREVIEW_BLOCK);
+}
+
+function drawNext() {
+  drawPiecePreview(nextCanvas, next);
 }
 
 function endGame() {
@@ -498,10 +505,13 @@ function init() {
   comboCount = 0;
   isBackToBackActive = false;
   floatingTexts = [];
+  heldPiece = null;
+  isHoldUsedThisPiece = false;
   powerupPieceNumber = randomInt(1, POWERUP_CYCLE);
   lastTime = performance.now();
   next = createNextPiece();
   spawn();
+  drawHold();
   updateHUD();
   overlay.classList.add('hidden');
   cancelAnimationFrame(animId);
@@ -535,6 +545,11 @@ document.addEventListener('keydown', e => {
       e.preventDefault();
       hardDrop();
       break;
+    case 'KeyC':
+    case 'ShiftLeft':
+    case 'ShiftRight':
+      holdCurrentPiece();
+      break;
   }
   updateHUD();
 });
@@ -553,6 +568,7 @@ function applyTheme(theme) {
   // el bucle no redibuja en pausa o game over
   draw();
   drawNext();
+  drawHold();
 }
 
 themeToggle.addEventListener('click', () => {

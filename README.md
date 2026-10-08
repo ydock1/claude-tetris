@@ -39,6 +39,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Soft drop** (bajada acelerada) y **hard drop** (caída instantánea).
 - **Pieza fantasma** (_ghost piece_): muestra dónde aterrizará la pieza actual.
 - **Vista previa** de la siguiente pieza.
+- **Hold**: guarda la pieza actual en un slot lateral; al pulsar de nuevo intercambia con la guardada. Solo una vez por pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Combo**: limpiar líneas en turnos consecutivos multiplica la puntuación (x2, x3, x4…).
 - **T-spin**: bonus al girar una pieza T encajada en un hueco (3 de sus 4 esquinas ocupadas).
@@ -89,6 +90,7 @@ Después abre `http://localhost:8000` en el navegador.
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
+| `C` / `Shift` | Reservar pieza (hold) — una vez por pieza |
 | `P`       | Pausar / reanudar                 |
 
 ---
@@ -166,7 +168,10 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 03-tetris/
 ├── index.html      # Estructura del DOM y canvas
 ├── style.css       # Estilos del juego (dark theme)
-├── game.js         # Toda la lógica del Tetris (~300 líneas)
+├── hold.js         # Lógica del hold (reservar pieza)
+├── game.js         # Toda la lógica del Tetris
+├── package.json    # Script npm test
+├── tests/          # Pruebas con node:test (scoring, hold)
 └── README.md
 ```
 

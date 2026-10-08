@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const GAME_SOURCE = fs.readFileSync(path.join(__dirname, '..', 'game.js'), 'utf8');
+const SOURCE_FILE_NAMES = ['hold.js', 'game.js'];
 const BOARD_COLUMN_COUNT = 10;
 
 function createFakeContext() {
@@ -24,7 +24,7 @@ function createFakeElement() {
     width: 300,
     height: 600,
     dataset: {},
-    classList: { add() {}, remove() {} },
+    classList: { add() {}, remove() {}, toggle() {} },
     setAttribute() {},
     addEventListener() {},
     blur() {},
@@ -34,30 +34,40 @@ function createFakeElement() {
 
 function createFakeDocument() {
   const elementsById = new Map();
+  const keyDownHandlers = [];
   return {
     documentElement: createFakeElement(),
     getElementById: id => {
       if (!elementsById.has(id)) elementsById.set(id, createFakeElement());
       return elementsById.get(id);
     },
-    addEventListener() {},
+    addEventListener(eventType, handler) {
+      if (eventType === 'keydown') keyDownHandlers.push(handler);
+    },
+    pressKey: code => {
+      for (const handler of keyDownHandlers) handler({ code, preventDefault() {} });
+    },
   };
 }
 
 function loadGame() {
   let fakeNowMs = 0;
+  const fakeDocument = createFakeDocument();
   const context = vm.createContext({
-    document: createFakeDocument(),
+    document: fakeDocument,
     getComputedStyle: () => ({ getPropertyValue: () => '' }),
     localStorage: { getItem: () => null, setItem() {} },
     performance: { now: () => fakeNowMs },
     requestAnimationFrame: () => 0,
     cancelAnimationFrame() {},
   });
-  vm.runInContext(GAME_SOURCE, context);
+  for (const fileName of SOURCE_FILE_NAMES) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8'), context);
+  }
 
   return {
     run: source => vm.runInContext(source, context),
+    pressKey: fakeDocument.pressKey,
     read: expression => JSON.parse(vm.runInContext(`JSON.stringify(${expression})`, context)),
     setNowMs: milliseconds => {
       fakeNowMs = milliseconds;
