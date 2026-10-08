@@ -40,6 +40,11 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Pieza fantasma** (_ghost piece_): muestra dónde aterrizará la pieza actual.
 - **Vista previa** de la siguiente pieza.
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
+- **Combo**: limpiar líneas en turnos consecutivos multiplica la puntuación (x2, x3, x4…).
+- **T-spin**: bonus al girar una pieza T encajada en un hueco (3 de sus 4 esquinas ocupadas).
+- **B2B Tetris**: un Tetris seguido de otro Tetris da un bonus ×1.5.
+- **Perfect Clear**: bonus al dejar el tablero completamente vacío.
+- **Efectos visuales y sonoros** al encadenar combos, T-spin, B2B y Perfect Clear.
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 
@@ -116,6 +121,8 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Game loop** (`loop`): basado en `requestAnimationFrame`, acumula el tiempo transcurrido y baja la pieza una fila cuando se supera `dropInterval`.
 - **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
 - **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
+- **Combo, T-spin, B2B y Perfect Clear** (`rewardClear`): el combo multiplica la base por el número de limpiezas consecutivas; el T-spin usa `TSPIN_SCORES` (400 / 800 / 1200 / 1600); un Tetris encadenado con otro Tetris multiplica por `BACK_TO_BACK_MULTIPLIER`; el Perfect Clear suma `PERFECT_CLEAR_SCORE` × nivel. Un bloqueo sin líneas corta el combo.
+- **Efectos y sonido** (`celebrateLock`): textos flotantes sobre el tablero y tonos generados con Web Audio API; el tono sube con el combo.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
 
