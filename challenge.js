@@ -43,6 +43,7 @@ let challengeElapsedMs = 0;
 let garbageElapsedMs = 0;
 let highestUnlockedLevelIndex = 0;
 let isMenuOpen = false;
+let freeGameStartLevel = 1;
 
 menuBtn.addEventListener('click', openLevelMenu);
 
@@ -52,7 +53,7 @@ function activeChallengeLevel() {
 
 function startingLevelNumber() {
   const level = activeChallengeLevel();
-  return level ? level.startLevel : 1;
+  return level ? level.startLevel : freeGameStartLevel;
 }
 
 function createStartingBoard() {

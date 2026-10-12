@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'game.js'];
+const SOURCE_FILE_NAMES = ['hold.js', 'skills.js', 'challenge.js', 'pause.js', 'game.js'];
 const BOARD_COLUMN_COUNT = 10;
 
 function createFakeContext() {

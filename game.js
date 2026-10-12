@@ -487,18 +487,6 @@ function endGame() {
   showOverlay('GAME OVER', `Puntuación: ${score.toLocaleString()}`, 'Reiniciar');
 }
 
-function togglePause() {
-  if (gameOver || isMenuOpen) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
-  } else {
-    cancelAnimationFrame(animId);
-    showOverlay('PAUSA', '', 'Reiniciar');
-  }
-}
-
 function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
@@ -546,6 +534,7 @@ function init() {
   drawHold();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseMenuEl.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -553,7 +542,7 @@ function init() {
 document.addEventListener('keydown', e => {
   if (e.code.startsWith('Arrow')) e.preventDefault();
   if (isMenuOpen) return;
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
